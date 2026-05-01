@@ -1,0 +1,6 @@
+name = "cerulean"
+version = "0.1.0"
+defaultTargets = ["Cerulean"]
+
+[[lean_lib]]
+name = "Cerulean"
