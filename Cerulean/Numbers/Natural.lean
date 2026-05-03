@@ -43,11 +43,11 @@ theorem ω.succ_iff {m n : ω} : m.succ = n.succ ↔ m = n := by
   intro h
   rw [h]
 
-theorem ω.one_ne_zero : (1 : ω) ≠ 0 := by
+public theorem ω.one_ne_zero : (1 : ω) ≠ 0 := by
   rw [← one_def]
   exact succ_nonzero 0
 
-theorem ω.zero_or_not (n : ω) : n = 0 ∨ n ≠ 0 := by
+public theorem ω.zero_or_not (n : ω) : n = 0 ∨ n ≠ 0 := by
   cases n
   case zero =>
     left
@@ -119,6 +119,11 @@ public theorem ω.cancel_add {m n k : ω} : k + m = k + n → m = n := by
   rw [add_comm k m, add_comm k n] at h
   exact add_cancel h
 
+public theorem ω.cancel_add_eq_zero {n k : ω} : k + n = n → k = 0 := by
+  intro h
+  rw [← zero_add n, ← add_assoc, add_zero] at h
+  exact add_cancel h
+
 public theorem ω.sum_zero_left {m n : ω} : m + n = 0 → m = 0 := by
   induction n
   case zero =>
@@ -133,6 +138,22 @@ public theorem ω.sum_zero_left {m n : ω} : m + n = 0 → m = 0 := by
 public theorem ω.sum_zero_right {m n : ω} : m + n = 0 → n = 0 := by
   rw [add_comm]
   exact sum_zero_left
+
+public theorem ω.abcd_to_acbd (a b c d : ω)
+  : (a + b) + (c + d) = (a + c) + (b + d) := by
+  rw [add_assoc, ← add_assoc b, add_comm b, add_assoc, ← add_assoc]
+
+public theorem ω.abcd_to_adbc (a b c d : ω)
+  : (a + b) + (c + d) = (a + d) + (b + c) := by
+  rw [add_comm c, abcd_to_acbd]
+
+public theorem ω.abcd_to_adcb (a b c d : ω)
+  : (a + b) + (c + d) = (a + d) + (c + b) := by
+  rw [abcd_to_adbc, add_comm b c]
+
+public theorem ω.abcd_to_cabd (a b c d : ω)
+  : (a + b) + (c + d) = (c + a) + (b + d) := by
+  rw [add_comm, add_comm a, abcd_to_adcb]
 
 /- =================================== LE =================================== -/
 
@@ -166,10 +187,14 @@ public theorem ω.le_rfl (n : ω) : n ≤ n := by
 
 public theorem ω.eq_then_le {m n : ω} : m = n → m ≤ n := by
   intro h
-  exists 0
-  symm
-  rw [add_zero]
-  assumption
+  rw [h]
+  exact le_rfl n
+
+theorem ω.succ_le_succ {m n : ω} : m ≤ n → m.succ ≤ n.succ := by
+  intro h
+  obtain ⟨k, hk⟩ := h
+  exists k
+  rw [succ_def, succ_def, succ_add, hk]
 
 public theorem ω.le_antisymm {m n : ω} (hm : m ≤ n) (hn : n ≤ m) : m = n := by
   obtain ⟨k₁, h₁⟩ := hm
@@ -270,28 +295,28 @@ public theorem ω.lt_then_succ_le {m n : ω} : n < m → n.succ ≤ m := by
   rw [succ_def]
   exists l
 
-public theorem ω.le_then_eq_or_lt {m n : ω} : m ≤ n → m = n ∨ m < n := by
+theorem ω.le_then_lt_or_eq {m n : ω} : m ≤ n → m < n ∨ m = n := by
   intro h
   obtain ⟨k, hk⟩ := h
   cases k
   case zero =>
     rw [zero_def, add_zero] at hk
-    left
+    right
     symm
     assumption
   case succ k =>
     let nonzero : k.succ ≠ 0 := succ_nonzero k
-    right
+    left
     apply lt_iff.mpr
     exists k.succ
 
-public theorem ω.le_iff_eq_or_lt {m n : ω} : m ≤ n ↔ m = n ∨ m < n := by
+public theorem ω.le_iff {m n : ω} : m ≤ n ↔ m < n ∨ m = n := by
   constructor
-  exact le_then_eq_or_lt
+  exact le_then_lt_or_eq
   intro h
   cases h
-  case inl m_eq_n => exact eq_then_le m_eq_n
-  case inr m_lt_n => exact m_lt_n.left
+  case inl m_lt_n => exact m_lt_n.left
+  case inr m_eq_n => exact eq_then_le m_eq_n
 
 public theorem ω.le_dichotomy {m n : ω} : m ≤ n ∨ n ≤ m := by
   induction n
@@ -308,16 +333,16 @@ public theorem ω.le_dichotomy {m n : ω} : m ≤ n ∨ n ≤ m := by
       exists k+1
       rw [← add_assoc, hk]
     case inr n_le_m =>
-      cases le_then_eq_or_lt n_le_m
-      case inl n_eq_m =>
-        left
-        rw [n_eq_m]
-        exists 1
-      case inr n_lt_m =>
+      cases le_iff.mp n_le_m
+      case inl n_lt_m =>
         right
         have thus : n.succ ≤ m := lt_then_succ_le n_lt_m
         rw [succ_def] at thus
         assumption
+      case inr n_eq_m =>
+        left
+        rw [n_eq_m]
+        exists 1
 
 public theorem ω.not_le {m n : ω} : ¬ m ≤ n ↔ n < m := by
   constructor
@@ -339,15 +364,15 @@ public theorem ω.not_le {m n : ω} : ¬ m ≤ n ↔ n < m := by
 public theorem ω.lt_trichotomy {m n : ω} : m < n ∨ m = n ∨ n < m := by
   cases le_dichotomy
   case inl m_le_n =>
-    have thus : m = n ∨ m < n := le_then_eq_or_lt m_le_n
+    have thus : m < n ∨ m = n := le_iff.mp m_le_n
     cases thus
-    case inl m_eq_n => right; left; assumption
-    case inr m_lt_n => left; assumption
+    case inl m_lt_n => left; assumption
+    case inr m_eq_n => right; left; assumption
   case inr n_le_m =>
-    have thus : n = m ∨ n < m := le_then_eq_or_lt n_le_m
+    have thus : n < m ∨ n = m := le_iff.mp n_le_m
     cases thus
-    case inl n_eq_m => right; left; symm; assumption
-    case inr n_lt_m => right; right; assumption
+    case inl n_lt_m => right; right; assumption
+    case inr n_eq_m => right; left; symm; assumption
 
 public theorem ω.not_lt {m n : ω} : ¬ m < n ↔ n ≤ m := by
   constructor
@@ -363,6 +388,34 @@ public theorem ω.not_lt {m n : ω} : ¬ m < n ↔ n ≤ m := by
   obtain ⟨m_le_n, m_ne_n⟩ := m_lt_n
   have n_eq_m : m = n := le_antisymm m_le_n n_le_m
   contradiction
+
+public theorem ω.eq_or_not (m n : ω) : m = n ∨ m ≠ n := by
+  let trichotomy : m < n ∨ m = n ∨ n < m := lt_trichotomy
+  cases trichotomy
+  case inl not_eq => right; exact not_eq.right
+  case inr maybe =>
+    cases maybe
+    case inl equal => left; assumption
+    case inr not_eq => right; symm; exact not_eq.right
+
+public theorem ω.no_in_between (x : ω) : ¬ ∃ y : ω, x < y ∧ y < x + 1 := by
+  simp
+  intro y x_lt_y
+  have thus : x + 1 ≤ y := by
+    rw [← succ_def]
+    exact lt_then_succ_le x_lt_y
+  exact not_lt.mpr thus
+
+public theorem ω.no_in_between₂ (x y : ω) : y ≤ x ∨ x + 1 ≤ y := by
+  have trichotomy : y < x ∨ y = x ∨ x < y := lt_trichotomy
+  cases or_assoc.mpr trichotomy
+  case inl y_le_x  =>
+    left
+    exact le_iff.mpr y_le_x
+  case inr x_lt_y =>
+    right
+    rw [← succ_def]
+    exact lt_then_succ_le x_lt_y
 
 /- ============================= MULTIPLICATION ============================= -/
 
@@ -487,12 +540,32 @@ public theorem ω.cancel_mul {m n k : ω} : k ≠ 0 → k * m = k * n → m = n 
   rw [mul_comm k m, mul_comm k n] at h
   exact mul_cancel hk h
 
-theorem ω.super_amazing_theorem : 1 + 1 = (2 : ω) := by
+public theorem ω.super_amazing_theorem : 1 + 1 = (2 : ω) := by
   rw [← succ_def]
   rfl
 
 public theorem ω.two_mul (n : ω) : 2 * n = n + n := by
   rw [← super_amazing_theorem, add_mul, one_mul]
+
+public theorem ω.two_ne_zero : (2 : ω) ≠ 0 := by
+  have this := succ_nonzero 1
+  have that : succ 1 = 2 := rfl
+  rw [that] at this
+  assumption
+
+public theorem ω.one_is_unique {k n : ω} : k * n = n → n ≠ 0 → k = 1 := by
+  intro kn_eq_n n_ne_0
+  cases k
+  case zero =>
+    rw [zero_def, zero_mul] at kn_eq_n
+    symm at kn_eq_n
+    contradiction
+  case succ k =>
+    rw [succ_def, succ_mul] at kn_eq_n
+    have kn_eq_0 : k * n = 0 := cancel_add_eq_zero kn_eq_n
+    have k_eq_0 : k = 0 := (mul_eq_zero kn_eq_0).resolve_right n_ne_0
+    rw [k_eq_0]
+    rfl
 
 /- ================================= PARITY ================================= -/
 
@@ -588,3 +661,45 @@ public theorem ω.not_odd {n : ω} : ¬ Odd n ↔ Even n := by
     have odd_n : Odd n := odd_iff_succ_even.mpr even_succ
     have not_odd_n : ¬ Odd n := hn even_n
     contradiction
+
+/- =============================== DECIDABLE ================================ -/
+
+public def ω.ble : ω → ω → Bool
+  | zero,   _      => true
+  | succ _, zero   => false
+  | succ n, succ m => ble n m
+
+public theorem ω.ble_iff_le (m n : ω) : ω.ble m n ↔ m ≤ n := by
+  induction m generalizing n
+  case zero =>
+    constructor
+    intro _
+    exists n
+    rw [zero_def, zero_add]
+    intro _
+    trivial
+  case succ m ih =>
+    cases n
+    case zero =>
+      constructor
+      intro h
+      contradiction
+      rw [zero_def]
+      intro h
+      have yet : 0 ≤ m.succ := zero_le m.succ
+      have thus : m.succ = 0 := le_antisymm h yet
+      have but : m.succ ≠ 0 := succ_nonzero m
+      contradiction
+    case succ n =>
+      constructor
+      intro h
+      have thus : m ≤ n := (ih n).mp h
+      exact succ_le_succ thus
+      intro h
+      rw [succ_def, succ_def] at h
+      have thus : m ≤ n := le_add_cancel h
+      have therefore := (ih n).mpr thus
+      trivial
+
+public instance (m n : ω) : Decidable (ω.ble m n) :=
+  if h : ω.ble m n then isTrue h else isFalse h
